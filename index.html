@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--HEAD-START-->
+<meta name="theme-color" content="#1D282C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="MeP">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="description" content="MeP: Mise-en-place-Checkliste per Sprache">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<!--HEAD-END-->
+<title>MeP</title>
+<!--FONTS-START-->
+<style>
+@font-face{font-family:"Barlow";src:url(fonts/Barlow-Regular.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Barlow";src:url(fonts/Barlow-Medium.woff2) format("woff2");font-weight:500;font-display:swap}
+@font-face{font-family:"Barlow";src:url(fonts/Barlow-SemiBold.woff2) format("woff2");font-weight:600;font-display:swap}
+@font-face{font-family:"Barlow Condensed";src:url(fonts/BarlowCondensed-Bold.woff2) format("woff2");font-weight:700;font-display:swap}
+@font-face{font-family:"Barlow Condensed";src:url(fonts/BarlowCondensed-ExtraBold.woff2) format("woff2");font-weight:800;font-display:swap}
+</style>
+<!--FONTS-END-->
+<style>
+:root{
+  --bg:#EEF2F1; --surface:#FFFFFF; --field:#F3F6F5; --ink:#162125; --muted:#5A6A6F; --line:#D6DEDD;
+  --accent:#E0962A; --accent-ink:#1E1403; --tape:#EFE7D2; --tape-ink:#3B3526; --urgent:#C42F3A;
+  --scrim:rgba(14,22,25,.45); --shadow:0 10px 30px rgba(22,33,37,.14);
+  --p-warm:#CF5F2A; --p-kalt:#2C80AE; --p-gemuese:#478C3C; --p-patisserie:#B0558A; --p-admin:#86733F; --p-allgemein:#6F8187;
+  --display:"Barlow Condensed","Roboto Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",-apple-system,"Segoe UI",Roboto,system-ui,sans-serif;
+  --composer-h:120px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#10171A; --surface:#182226; --field:#1F2B30; --ink:#E6EDEC; --muted:#93A4A8; --line:#2A383D;
+    --accent:#F0AA45; --accent-ink:#1E1403; --tape:#3A3629; --tape-ink:#EDE3C6; --urgent:#FF6B73;
+    --scrim:rgba(0,0,0,.6); --shadow:0 10px 30px rgba(0,0,0,.45);
+    --p-warm:#F08150; --p-kalt:#5DB2DE; --p-gemuese:#79C06A; --p-patisserie:#E38BBE; --p-admin:#C9B27A; --p-allgemein:#9DAFB4;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10171A; --surface:#182226; --field:#1F2B30; --ink:#E6EDEC; --muted:#93A4A8; --line:#2A383D;
+  --accent:#F0AA45; --accent-ink:#1E1403; --tape:#3A3629; --tape-ink:#EDE3C6; --urgent:#FF6B73;
+  --scrim:rgba(0,0,0,.6); --shadow:0 10px 30px rgba(0,0,0,.45);
+  --p-warm:#F08150; --p-kalt:#5DB2DE; --p-gemuese:#79C06A; --p-patisserie:#E38BBE; --p-admin:#C9B27A; --p-allgemein:#9DAFB4;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.35;
+  -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:contain}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+button:focus-visible,textarea:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:720px;margin:0 auto;padding-inline:16px}
+body.big .wrap{max-width:1400px}
+
+/* Kopf */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.top .wrap{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;padding-block:12px 10px}
+.mark{font-family:var(--display);font-weight:800;font-size:46px;line-height:.8;letter-spacing:-.01em;margin:0}
+.mark span{color:var(--accent)}
+.meta{display:grid;gap:6px;min-width:0}
+.meta .date{font-size:12px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta .count{font-size:14px;font-weight:500;font-variant-numeric:tabular-nums}
+.bar{height:6px;border-radius:6px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);border-radius:6px;transition:width .35s ease}
+.iconbtn{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:var(--ink)}
+.iconbtn:hover{background:var(--field)}
+.iconbtn svg{width:24px;height:24px}
+
+/* Filter */
+.chips{display:flex;gap:8px;overflow-x:auto;padding-block:2px 12px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;display:inline-flex;align-items:center;gap:7px;height:36px;padding-inline:14px;border-radius:18px;
+  background:var(--surface);border:1px solid var(--line);font-size:15px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
+.chip b{font-weight:600;color:var(--muted)}
+.chip .dot{width:9px;height:9px;border-radius:50%;background:var(--pc)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip[aria-pressed="true"] b{color:inherit;opacity:.7}
+
+/* Liste */
+main{padding-bottom:calc(var(--composer-h) + 28px)}
+.banner{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:12px 14px;margin-bottom:14px;
+  border-radius:12px;border:1px dashed var(--muted);color:var(--muted);font-size:15px}
+.banner button{font-weight:600;color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.groups{display:grid;gap:18px}
+body.big .groups{grid-template-columns:repeat(auto-fill,minmax(360px,1fr));align-items:start}
+.group{--pc:var(--p-allgemein)}
+.group-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 8px}
+.tape{position:relative;display:inline-flex;align-items:center;gap:8px;padding:5px 16px 4px;background:var(--tape);color:var(--tape-ink);
+  font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:.06em;text-transform:uppercase;transform:rotate(-.6deg);
+  clip-path:polygon(0 8%,3% 0,97% 4%,100% 0,98% 50%,100% 100%,96% 94%,4% 100%,0 92%,2% 50%)}
+.tape .dot{width:10px;height:10px;border-radius:50%;background:var(--pc)}
+.group-head .open{font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tasks{list-style:none;margin:0;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.task{display:flex;align-items:stretch;border-top:1px solid var(--line)}
+.task:first-child{border-top:0}
+.task.fresh{animation:fresh 1.6s ease}
+@keyframes fresh{0%{background:color-mix(in srgb,var(--accent) 28%,var(--surface))}100%{background:var(--surface)}}
+.check{flex:none;width:60px;display:grid;place-items:center}
+.check span{width:30px;height:30px;border-radius:8px;border:2.5px solid var(--pc);display:grid;place-items:center;transition:background .15s}
+.check svg{width:18px;height:18px;color:#fff;opacity:0;transform:scale(.6);transition:all .15s}
+.task.done .check span{background:var(--pc)}
+.task.done .check svg{opacity:1;transform:none}
+.tbody{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;text-align:left;padding:14px 14px 14px 0;min-height:60px}
+.txt{font-size:18px;font-weight:500;overflow-wrap:anywhere}
+.qty,.mult{display:inline-flex;align-items:center;height:26px;padding-inline:8px;border-radius:7px;font-weight:600;font-size:15px;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.qty{gap:.28em;background:color-mix(in srgb,var(--pc) 16%,transparent);color:var(--ink)}
+.qty small{font-size:.86em;font-weight:500;color:var(--muted)}
+.mult{background:var(--accent);color:var(--accent-ink)}
+.flag{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--urgent)}
+.flag svg{width:13px;height:13px}
+.task.done .txt{color:var(--muted);text-decoration:line-through;text-decoration-thickness:2px}
+.task.done .qty,.task.done .mult{opacity:.5}
+.task.done .flag{display:none}
+.empty{padding:42px 20px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:14px}
+.empty strong{display:block;font-family:var(--display);font-size:26px;color:var(--ink);letter-spacing:.02em;margin-bottom:6px}
+body.big .txt{font-size:24px}
+body.big .check{width:78px}
+body.big .check span{width:42px;height:42px;border-radius:10px}
+body.big .check svg{width:26px;height:26px}
+body.big .tbody{min-height:76px}
+body.big .qty,body.big .mult{font-size:19px;height:32px}
+
+/* Eingabe */
+.composer{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);
+  box-shadow:0 -8px 24px rgba(0,0,0,.06);padding-bottom:env(safe-area-inset-bottom,0px)}
+.composer .wrap{display:grid;gap:8px;padding-block:10px 12px}
+.hint{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row{display:flex;gap:10px;align-items:flex-end}
+.row textarea{flex:1;min-width:0;resize:none;min-height:52px;max-height:140px;border-radius:16px;border:1px solid var(--line);
+  background:var(--field);color:var(--ink);font:inherit;font-size:17px;padding:14px 16px;line-height:1.3}
+.row textarea::placeholder{color:var(--muted)}
+.round{flex:none;width:52px;height:52px;border-radius:50%;display:grid;place-items:center}
+.round svg{width:24px;height:24px}
+.mic{background:var(--accent);color:var(--accent-ink);position:relative}
+.mic.live{background:var(--urgent);color:#fff}
+.mic.live::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:3px solid var(--urgent);animation:pulse 1.2s ease-out infinite}
+@keyframes pulse{from{opacity:.9;transform:scale(.9)}to{opacity:0;transform:scale(1.25)}}
+.send{background:var(--ink);color:var(--bg)}
+
+/* Toast */
+.toast{position:fixed;left:16px;right:16px;margin-inline:auto;width:fit-content;bottom:calc(var(--composer-h) + 12px);transform:translateY(20px);z-index:7;opacity:0;pointer-events:none;
+  display:flex;align-items:center;gap:14px;max-width:560px;padding:12px 14px 12px 16px;border-radius:14px;background:var(--ink);color:var(--bg);
+  box-shadow:var(--shadow);font-size:15px;transition:all .2s ease}
+.toast.show{opacity:1;transform:none;pointer-events:auto}
+.toast button{flex:none;font-weight:600;color:var(--accent);padding:4px 2px}
+
+/* Sheets */
+.sheet{position:fixed;inset:0;z-index:10;display:flex;align-items:flex-end;justify-content:center;background:var(--scrim);opacity:0;pointer-events:none;transition:opacity .2s}
+.sheet.open{opacity:1;pointer-events:auto}
+.panel{width:100%;max-width:560px;max-height:88%;overflow:auto;background:var(--surface);border-radius:20px 20px 0 0;
+  padding:8px 20px calc(20px + env(safe-area-inset-bottom,0px));transform:translateY(30px);transition:transform .22s ease;box-shadow:var(--shadow)}
+.sheet.open .panel{transform:none}
+.grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:4px auto 12px}
+.panel h2{font-family:var(--display);font-weight:800;font-size:28px;letter-spacing:.01em;margin:0 0 14px;text-wrap:balance}
+.panel h3{font-size:12px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:20px 0 8px}
+.field{display:grid;gap:6px;margin-bottom:14px}
+.field label,.lbl{font-size:13px;font-weight:600;color:var(--muted)}
+.field input,.field select,.field textarea{width:100%;height:48px;border-radius:12px;border:1px solid var(--line);background:var(--field);color:var(--ink);
+  font:inherit;padding:0 14px}
+.field textarea{height:auto;min-height:60px;padding:12px 14px;resize:vertical}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stepper{display:flex;align-items:center;gap:8px}
+.stepper button{width:48px;height:48px;border-radius:12px;background:var(--field);border:1px solid var(--line);font-size:22px;font-weight:600}
+.stepper output{min-width:48px;text-align:center;font-weight:600;font-size:19px;font-variant-numeric:tabular-nums}
+.seg{display:flex;flex-wrap:wrap;gap:8px}
+.seg button{height:40px;padding-inline:14px;border-radius:20px;border:1px solid var(--line);background:var(--field);font-size:15px;font-weight:500;display:inline-flex;align-items:center;gap:7px}
+.seg button .dot{width:9px;height:9px;border-radius:50%;background:var(--pc)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;width:100%;text-align:left;font-weight:500}
+.toggle .sw{flex:none;width:50px;height:30px;border-radius:15px;background:var(--line);position:relative;transition:background .15s}
+.toggle .sw::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .15s}
+.toggle[aria-pressed="true"] .sw{background:var(--accent)}
+.toggle[aria-pressed="true"] .sw::after{transform:translateX(20px)}
+.actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+.btn{flex:1;min-width:120px;height:50px;border-radius:14px;font-weight:600;background:var(--field);border:1px solid var(--line)}
+.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.danger{color:var(--urgent)}
+.btn.danger.armed{background:var(--urgent);color:#fff;border-color:var(--urgent)}
+.menu-list{display:grid;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.menu-list > *{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:54px;padding:0 16px;text-align:left;font-weight:500;border-top:1px solid var(--line);width:100%}
+.menu-list > *:first-child{border-top:0}
+.menu-list .sub{color:var(--muted);font-weight:400;font-size:14px}
+.menu-list .danger{color:var(--urgent)}
+.menu-list .danger.armed{background:var(--urgent);color:#fff}
+.foot{margin-top:18px;font-size:13px;color:var(--muted)}
+.steps{margin:0;padding-left:0;list-style:none;counter-reset:s;display:grid;gap:12px}
+.steps li{counter-increment:s;display:grid;grid-template-columns:30px 1fr;gap:10px;font-size:16px;line-height:1.45}
+.steps li::before{content:counter(s);width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-weight:600;font-size:14px;display:grid;place-items:center;margin-top:1px}
+.code{display:flex;gap:8px;align-items:center;margin-top:6px;padding:10px 12px;border-radius:10px;background:var(--field);border:1px solid var(--line);
+  font:500 14px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow-wrap:anywhere}
+.code span{flex:1;min-width:0;user-select:all}
+.code button{flex:none;font:600 14px var(--body);color:var(--accent)}
+.note{padding:12px 14px;border-radius:12px;background:var(--tape);color:var(--tape-ink);font-size:15px;line-height:1.45}
+kbd{font:600 14px var(--body);padding:1px 6px;border-radius:5px;border:1px solid var(--line);background:var(--field)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <h1 class="mark" aria-label="MeP">M<span>e</span>P</h1>
+    <div class="meta">
+      <div class="date" id="date"></div>
+      <div class="count" id="count"></div>
+      <div class="bar" aria-hidden="true"><i id="barfill"></i></div>
+    </div>
+    <button class="iconbtn" id="menuBtn" aria-label="Menü">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+    </button>
+  </div>
+  <div class="wrap"><nav class="chips" id="chips" aria-label="Posten filtern"></nav></div>
+</header>
+
+<main class="wrap">
+  <div class="banner" id="banner" hidden>
+    <span>Das ist eine Beispielliste. Sie verschwindet, sobald du deine erste Aufgabe erfasst.</span>
+    <button id="clearExamples">Beispiele entfernen</button>
+  </div>
+  <div class="groups" id="groups"></div>
+</main>
+
+<footer class="composer" id="composer">
+  <div class="wrap">
+    <div class="hint" id="hint">Mehrere Aufgaben mit Komma oder «und» trennen · «Suppe erledigt» · «lösche Brot»</div>
+    <form class="row" id="form" autocomplete="off">
+      <textarea id="input" rows="1" placeholder="z. B. 5 kg Zwiebelbrunoise" aria-label="Aufgaben eingeben" enterkeyhint="send"></textarea>
+      <button type="button" class="round mic" id="mic" aria-label="Diktieren">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      </button>
+      <button type="submit" class="round send" id="send" aria-label="Hinzufügen" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+      </button>
+    </form>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button id="toastUndo" hidden>Rückgängig</button></div>
+
+<!-- Aufgabe bearbeiten -->
+<div class="sheet" id="editSheet" aria-hidden="true">
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+    <div class="grab"></div>
+    <h2 id="editTitle">Aufgabe bearbeiten</h2>
+    <div class="field"><label for="fText">Aufgabe</label><textarea id="fText" rows="2"></textarea></div>
+    <div class="split">
+      <div class="field"><label for="fQty">Menge</label><input id="fQty" inputmode="decimal" placeholder="–"></div>
+      <div class="field"><label for="fUnit">Einheit</label><select id="fUnit"></select></div>
+    </div>
+    <div class="field"><span class="lbl">Anzahl</span>
+      <div class="stepper"><button type="button" id="multMinus" aria-label="Weniger">−</button><output id="fMult">1</output><button type="button" id="multPlus" aria-label="Mehr">+</button><span class="sub" style="color:var(--muted);font-size:14px">× ausführen</span></div>
+    </div>
+    <div class="field"><span class="lbl">Posten</span><div class="seg" id="fPosten"></div></div>
+    <button type="button" class="toggle" id="fUrgent" aria-pressed="false"><span>Wichtig, zuerst erledigen</span><span class="sw"></span></button>
+    <div class="actions">
+      <button type="button" class="btn danger" id="editDelete">Löschen</button>
+      <button type="button" class="btn primary" id="editSave">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- Menü -->
+<div class="sheet" id="menuSheet" aria-hidden="true">
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
+    <div class="grab"></div>
+    <h2 id="menuTitle">MeP</h2>
+    <h3>Ansicht</h3>
+    <div class="menu-list">
+      <button type="button" class="toggle" id="bigToggle" aria-pressed="false"><span>Grossansicht für Tablet<br><span class="sub">Grosse Schrift, Spalten, Bildschirm bleibt an</span></span><span class="sw"></span></button>
+      <div><span>Design</span><div class="seg" id="themeSeg"><button type="button" data-v="auto">Auto</button><button type="button" data-v="light">Hell</button><button type="button" data-v="dark">Dunkel</button></div></div>
+    </div>
+    <h3>Liste</h3>
+    <div class="menu-list">
+      <button type="button" id="mClearDone"><span>Erledigte entfernen</span><span class="sub" id="mDoneCount"></span></button>
+      <button type="button" id="mShare"><span>Liste teilen</span><span class="sub">WhatsApp, Mail, Nachricht</span></button>
+      <button type="button" id="mClearAll" class="danger"><span id="mClearAllLbl">Neue Liste starten</span><span class="sub"></span></button>
+    </div>
+    <h3>Daten</h3>
+    <div class="menu-list">
+      <button type="button" id="mBackup"><span>Sicherung speichern</span><span class="sub">als Datei</span></button>
+      <button type="button" id="mRestore"><span>Sicherung laden</span><span class="sub">Datei wählen</span></button>
+      <input type="file" id="restoreFile" accept="application/json,.json" hidden>
+    </div>
+    <h3>Einrichtung</h3>
+    <div class="menu-list">
+      <button type="button" id="mHelp"><span>Action-Taste und Siri einrichten</span><span class="sub">Anleitung</span></button>
+    </div>
+    <p class="foot">MeP 1.0 · Deine Daten bleiben auf diesem Gerät. Nichts wird hochgeladen.</p>
+  </div>
+</div>
+
+<!-- Import -->
+<div class="sheet" id="importSheet" aria-hidden="true">
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="importTitle">
+    <div class="grab"></div>
+    <h2 id="importTitle">Geteilte Liste übernehmen?</h2>
+    <p id="importText"></p>
+    <div class="actions">
+      <button type="button" class="btn" id="importCancel">Abbrechen</button>
+      <button type="button" class="btn primary" id="importOk">Übernehmen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Neue Liste bestätigen (per Sprache) -->
+<div class="sheet" id="confirmSheet" aria-hidden="true">
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="grab"></div>
+    <h2 id="confirmTitle">Ganze Liste löschen?</h2>
+    <p>Alle Aufgaben werden entfernt. Du kannst es direkt danach noch rückgängig machen.</p>
+    <div class="actions">
+      <button type="button" class="btn" id="confirmCancel">Abbrechen</button>
+      <button type="button" class="btn danger armed" id="confirmOk">Alles löschen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Einrichtung -->
+<div class="sheet" id="helpSheet" aria-hidden="true">
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="grab"></div>
+    <h2 id="helpTitle">Action-Taste und Siri</h2>
+    <h3>iPhone: Kurzbefehl anlegen (einmalig, 3 Minuten)</h3>
+    <ol class="steps">
+      <li><span>App <b>Kurzbefehle</b> öffnen, oben rechts <kbd>+</kbd> tippen.</span></li>
+      <li><span>Aktion <b>Text diktieren</b> hinzufügen. Sprache: Deutsch (Schweiz). «Diktat beenden»: Nach Pause.</span></li>
+      <li><span>Aktion <b>URL codieren</b> hinzufügen (Suche: «codieren»). Sie nimmt automatisch den diktierten Text.</span></li>
+      <li><span>Aktion <b>Text</b> hinzufügen und diese Adresse einfügen, danach die Variable <b>URL-codierter Text</b> direkt anhängen:
+        <div class="code"><span id="shortcutUrl"></span><button type="button" id="copyUrl">Kopieren</button></div></span></li>
+      <li><span>Aktion <b>URLs öffnen</b> hinzufügen.</span></li>
+      <li><span>Kurzbefehl <b>Mise en place</b> nennen. Diesen Namen versteht Siri zuverlässiger als «MeP».</span></li>
+    </ol>
+    <h3>Auslösen</h3>
+    <ol class="steps">
+      <li><span><b>Action-Taste</b> (ab iPhone 15 Pro): Einstellungen › Action-Taste › Kurzbefehl › «Mise en place».</span></li>
+      <li><span><b>Ältere iPhones</b>: Einstellungen › Bedienungshilfen › Tippen › Auf Rückseite tippen › Doppeltippen › «Mise en place».</span></li>
+      <li><span><b>Siri</b>: «Hey Siri, Mise en place», danach die Aufgaben sprechen.</span></li>
+    </ol>
+    <h3>Wichtig beim iPhone</h3>
+    <p class="note">Der Kurzbefehl öffnet MeP in Safari. Damit alles in derselben Liste landet, MeP über Safari › Teilen › «Zum Home-Bildschirm» ablegen und dabei den Schalter <b>«Als Web-App öffnen» ausschalten</b>. Tipp gegen viele offene Tabs: Einstellungen › Safari › Tabs schliessen › Nach einem Tag.</p>
+    <h3>Android</h3>
+    <ol class="steps">
+      <li><span>In Chrome öffnen, Menü › <b>App installieren</b>.</span></li>
+      <li><span>Mikrofon-Knopf unten in MeP tippen und sprechen.</span></li>
+      <li><span>Text aus anderen Apps, zum Beispiel Gemini, über <b>Teilen › MeP</b> direkt als Aufgaben übernehmen.</span></li>
+    </ol>
+    <div class="actions"><button type="button" class="btn primary" id="helpClose">Fertig</button></div>
+  </div>
+</div>
+
+<!--SCRIPTS-START-->
+<script src="parser.js"></script>
+<script src="app.js"></script>
+<!--SCRIPTS-END-->
+</body>
+</html>
