@@ -1,5 +1,5 @@
 /* MeP Service Worker: funktioniert auch ohne Netz */
-var CACHE = 'mep-v1';
+var CACHE = 'mep-v3';
 var FILES = ['./', './index.html', './parser.js', './app.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png',
   './fonts/Barlow-Regular.woff2', './fonts/Barlow-Medium.woff2', './fonts/Barlow-SemiBold.woff2',

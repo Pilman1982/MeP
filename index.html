@@ -232,9 +232,9 @@ kbd{font:600 14px var(--body);padding:1px 6px;border-radius:5px;border:1px solid
 
 <footer class="composer" id="composer">
   <div class="wrap">
-    <div class="hint" id="hint">Mehrere Aufgaben mit Komma oder «und» trennen · «Suppe erledigt» · «lösche Brot»</div>
+    <div class="hint" id="hint">Mehrere Aufgaben: «nächste Zeile» dazwischen sagen · «Suppe erledigt» · «lösche Brot»</div>
     <form class="row" id="form" autocomplete="off">
-      <textarea id="input" rows="1" placeholder="z. B. 5 kg Zwiebelbrunoise" aria-label="Aufgaben eingeben" enterkeyhint="send"></textarea>
+      <textarea id="input" rows="1" autocapitalize="sentences" placeholder="z. B. 5 kg Zwiebelbrunoise" aria-label="Aufgaben eingeben" enterkeyhint="send"></textarea>
       <button type="button" class="round mic" id="mic" aria-label="Diktieren">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
       </button>
@@ -277,6 +277,7 @@ kbd{font:600 14px var(--body);padding:1px 6px;border-radius:5px;border:1px solid
     <h3>Ansicht</h3>
     <div class="menu-list">
       <button type="button" class="toggle" id="bigToggle" aria-pressed="false"><span>Grossansicht für Tablet<br><span class="sub">Grosse Schrift, Spalten, Bildschirm bleibt an</span></span><span class="sw"></span></button>
+      <div><span>Mikrofon-Knopf<br><span class="sub">«Tastatur» ist auf dem iPhone am zuverlässigsten</span></span><div class="seg" id="micSeg"><button type="button" data-v="auto">MeP</button><button type="button" data-v="keyboard">Tastatur</button></div></div>
       <div><span>Design</span><div class="seg" id="themeSeg"><button type="button" data-v="auto">Auto</button><button type="button" data-v="light">Hell</button><button type="button" data-v="dark">Dunkel</button></div></div>
     </div>
     <h3>Liste</h3>
@@ -295,7 +296,7 @@ kbd{font:600 14px var(--body);padding:1px 6px;border-radius:5px;border:1px solid
     <div class="menu-list">
       <button type="button" id="mHelp"><span>Action-Taste und Siri einrichten</span><span class="sub">Anleitung</span></button>
     </div>
-    <p class="foot">MeP 1.0 · Deine Daten bleiben auf diesem Gerät. Nichts wird hochgeladen.</p>
+    <p class="foot">MeP 1.2 · Deine Daten bleiben auf diesem Gerät. Nichts wird hochgeladen.</p>
   </div>
 </div>
 
@@ -333,7 +334,7 @@ kbd{font:600 14px var(--body);padding:1px 6px;border-radius:5px;border:1px solid
     <h3>iPhone: Kurzbefehl anlegen (einmalig, 3 Minuten)</h3>
     <ol class="steps">
       <li><span>App <b>Kurzbefehle</b> öffnen, oben rechts <kbd>+</kbd> tippen.</span></li>
-      <li><span>Aktion <b>Text diktieren</b> hinzufügen. Sprache: Deutsch (Schweiz). «Diktat beenden»: Nach Pause.</span></li>
+      <li><span>Aktion <b>Text diktieren</b> hinzufügen. Sprache: Deutsch (Schweiz). «Diktat beenden»: <b>Beim Tippen</b>. So kannst du lange Listen sprechen und tippst am Schluss auf Fertig.</span></li>
       <li><span>Aktion <b>URL codieren</b> hinzufügen (Suche: «codieren»). Sie nimmt automatisch den diktierten Text.</span></li>
       <li><span>Aktion <b>Text</b> hinzufügen und diese Adresse einfügen, danach die Variable <b>URL-codierter Text</b> direkt anhängen:
         <div class="code"><span id="shortcutUrl"></span><button type="button" id="copyUrl">Kopieren</button></div></span></li>

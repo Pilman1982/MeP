@@ -20,7 +20,7 @@
     admin: {
       bestell: 3, lieferant: 3, lieferung: 3, liefer: 2, inventar: 3, economat: 3, anruf: 2, telefon: 2,
       mail: 2, einkauf: 2, kontroll: 2, temperatur: 2, haccp: 3, protokoll: 3, reinig: 2, putz: 2,
-      abrechn: 3, rechnung: 3, menueplan: 3, menuplan: 3, dienstplan: 3, etikett: 2, beschrift: 2,
+      abrechn: 3, rechnung: 3, menueplan: 3, menuplan: 3, dienstplan: 3, arbeitsplan: 3, einsatzplan: 3, wochenplan: 3, produktionsplan: 3, mitarbeiter: 2, sitzung: 2, meeting: 2, etikett: 2, beschrift: 2,
       offerte: 3, reservation: 2, allergen: 2, rezept: 1, kalkul: 3, ablauf: 1, abfall: 2, entsorg: 2,
       warenannahme: 3, rueckstell: 3, kuehlraum: 1, tiefkuehl: 1, lager: 1, drucken: 2, liste: 1
     },
@@ -46,7 +46,7 @@
       sauce: 2, jus: 3, fond: 3, suppe: 3, bouillon: 3, consomme: 3, braten: 2, schmor: 2, sousvide: 3,
       grill: 2, wild: 1, reh: 2, hirsch: 2, gams: 2, heizen: 2, aufwaerm: 2, regenerier: 2, demiglace: 3,
       veloute: 3, ragout: 3, geschnetzelt: 3, wurst: 2, speck: 1, entrecote: 3, filet: 1, huft: 3,
-      voressen: 3, gulasch: 3, siedfleisch: 3, kotelett: 2, schnitzel: 2, hackfleisch: 2, burger: 2,
+      voressen: 3, gulasch: 3, siedfleisch: 3, kotelett: 2, schnitzel: 2, hackfleisch: 2, klopfen: 1, plattieren: 2, dressieren: 1, spicken: 2, bardieren: 2, tranchier: 2, burger: 2,
       pochier: 1, fritier: 1, fritteuse: 2, salamander: 2, anbrat: 2, glasier: 1, braise: 2,
       rahmsauce: 3, hollandaise: 3, bearnaise: 3, beurre: 2, eier: 1, omelett: 2, tagesmenue: 1,
       kochen: 1, reduzier: 2
@@ -61,7 +61,7 @@
       broccoli: 3, blumenkohl: 3, rosenkohl: 3, wirz: 3, rotkraut: 3, sauerkraut: 3, mais: 2,
       couscous: 3, quinoa: 3, bulgur: 3, gnocchi: 3, ravioli: 2, pommes: 3, frites: 3, kroketten: 3,
       rueben: 3, pastinake: 3, topinambur: 3, radieschen: 2, gurke: 2, avocado: 2, ingwer: 2,
-      chiffonade: 3, ciseler: 3, parmentier: 3, macedoine: 3, paysanne: 3, wuerfel: 1, schneid: 1,
+      chiffonade: 3, hacken: 1, hackeln: 1, schneiden: 1, ciseler: 3, parmentier: 3, macedoine: 3, paysanne: 3, wuerfel: 1, schneid: 1,
       rüst: 2, ruest: 2
     }
   };
@@ -166,9 +166,13 @@
   function wordCount(s) { return s.trim() ? s.trim().split(/\s+/).length : 0; }
 
   function splitSegments(text) {
-    var t = ' ' + String(text || '').replace(/\s+/g, ' ') + ' ';
+    var t = String(text || '').replace(/[\n\r\u2028\u2029]+/g, ' | ');
+    // Gesprochene Trenner: "nächste Zeile", "neue Aufgabe", "Punkt", "Komma" ...
+    t = t.replace(/(^|[\s,.|])(?:und\s+)?(?:(?:die\s+)?(?:n[aä]e?chste|neue|weitere)\s+(?:zeile|aufgabe|position|punkt)|(?:n[aä]e?chster|neuer|weiterer)\s+(?:punkt|absatz|posten)|neuer\s+absatz|als\s+n[aä]e?chstes|punkt|komma|strichpunkt|semikolon)(?=$|[\s,.:|])/gi, '$1 | ');
+    t = t.replace(/\bund\s+so\s+weiter\b|\busw\.?/gi, ' ');
+    t = ' ' + t.replace(/[ \t]+/g, ' ') + ' ';
     // Satzzeichen als Trenner (Dezimalkomma und Dezimalpunkt schützen)
-    t = t.replace(/[;!?\n\r•]+/g, ',')
+    t = t.replace(/[;!?•]+/g, ',')
       .replace(/(?<!\d)\.|\.(?!\d)/g, ',')
       .replace(/(?<!\d),|,(?!\d)/g, '|');
     // Verbindungswörter
@@ -292,6 +296,7 @@
     s = s.replace(/\s+/g, ' ').trim();
     s = s.replace(LEAD_FILLER_RE, '').replace(TRAIL_FILLER_RE, '').trim();
     s = s.replace(/^(?:von|vom|an|mit|à)\s+/i, '').replace(/[\s,:–-]+$/, '').trim();
+    s = s.replace(/(?:\s+(?:auf|für|fuer|mit|von|zu|an|neu|um))+$/i, '').trim();
     if (!s) return null;
     s = capFirst(s);
 
@@ -362,7 +367,7 @@
       var task = matchTask(target, tasks, opts);
       if (c.type === 'change') {
         if (!task) continue;
-        var p = parseTask('x ' + m[2]);
+        var p = parseTask('Menge ' + m[2]);
         if (!p || (p.qty == null && p.mult === 1)) continue;
         return { type: 'change', task: task, qty: p.qty, unit: p.unit, mult: p.mult, query: target };
       }
@@ -390,10 +395,55 @@
     return tokens(text).filter(function (w) { return w.length >= 4; });
   }
 
+  // ---------- Diktat-Puffer ----------
+  // Safari auf dem iPhone hat drei Eigenheiten: Teilstücke kommen kumuliert doppelt,
+  // nach einer Pause wird der bisherige Text verworfen, und Wörter werden nachträglich
+  // korrigiert. Der Puffer gleicht das aus und liefert immer den ganzen Text.
+  function joinText(a, b) {
+    a = (a || '').trim(); b = (b || '').trim();
+    if (!a) return b;
+    if (!b) return a;
+    var la = a.toLowerCase(), lb = b.toLowerCase();
+    if (lb.indexOf(la) === 0) return b;
+    if (la.indexOf(lb) >= 0) return a;
+    return a + ' ' + b;
+  }
+  function commonPrefix(a, b) {
+    a = a.toLowerCase(); b = b.toLowerCase();
+    var i = 0; while (i < a.length && i < b.length && a[i] === b[i]) i++;
+    return i;
+  }
+  function mergeEvent(results) {
+    var acc = '';
+    for (var i = 0; i < results.length; i++) {
+      var r = results[i];
+      var t = (r && r[0] && r[0].transcript || '').trim();
+      if (t) acc = joinText(acc, t);
+    }
+    return acc;
+  }
+  function createTranscript() {
+    var committed = '', last = '', lastLen = 0;
+    return {
+      push: function (ev) {
+        var results = (ev && ev.results) || [];
+        var cur = mergeEvent(results);
+        if (last) {
+          var refinement = commonPrefix(last, cur) >= Math.min(4, last.length);
+          if (results.length < lastLen || !refinement) committed = joinText(committed, last);
+        }
+        last = cur; lastLen = results.length;
+        return joinText(committed, cur);
+      },
+      text: function () { return joinText(committed, last); },
+      reset: function () { committed = ''; last = ''; lastLen = 0; }
+    };
+  }
+
   var api = {
     POSTEN: POSTEN, parse: parse, splitSegments: splitSegments, parseTask: parseTask,
     parseCommand: parseCommand, classify: classify, matchTask: matchTask, fmtNumber: fmtNumber,
-    norm: norm, learnWords: learnWords, UNITS: UNITS
+    norm: norm, learnWords: learnWords, UNITS: UNITS, createTranscript: createTranscript
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.MepParser = api;
