@@ -211,17 +211,42 @@
   }
 
   // ---------- Diktat ----------
-  // Jede Aufnahme ist eine eigene Sitzung mit frischem Objekt. Beendete Aufnahmen
-  // werden nie mehr angefasst (abort auf beendete Aufnahmen blockiert das iPhone).
-  // Meldet Safari nach dem Start nichts, gilt das Mikrofon als hängend: Knopf wird
-  // freigegeben und der nächste Tipp öffnet die Tastatur mit ihrer Diktier-Taste.
+  // iOS-WebKit-Regeln, nach denen diese Routine gebaut ist:
+  // 1. start() läuft synchron im Tipp (User Gesture), nie in einem Timer oder Promise.
+  // 2. Jede Aufnahme bekommt ein frisches Objekt; beendete Aufnahmen werden nie mehr
+  //    angefasst (abort() auf beendete Aufnahmen blockiert den Audiokanal).
+  // 3. Nie zwei Mikrofon-Nutzer zugleich: der Diagnose-Test wird vorher freigegeben.
+  // 4. Kein Lebenszeichen nach dem Start: Safari hängt, Knopf wird freigegeben und
+  //    der nächste Tipp öffnet die Tastatur mit ihrer Diktier-Taste.
+  // 5. Home-Bildschirm-App (standalone): Safari-Spracherkennung ist dort unzuverlässig,
+  //    deshalb standardmässig Tastatur-Diktat.
+  // 6. App im Hintergrund oder Seite verlassen: Aufnahme sofort sauber schliessen.
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var D = window.MepDiag || { log: function () {}, set: function () {}, releaseMic: function () {} };
+  var isStandalone = navigator.standalone === true || !!(window.matchMedia && matchMedia('(display-mode: standalone)').matches);
   var rec = null, recEnded = true, listening = false, micBase = '', transcript = P.createTranscript();
   var startTimer = null, watchdog = null, hardStop = null, micHung = false;
   var HINT_DEFAULT = $('hint').textContent;
   var START_TIMEOUT = 2500, SILENCE_TIMEOUT = 25000, STOP_GRACE = 1500;
 
-  function micMode() { return state.settings.mic === 'keyboard' || micHung || !SR ? 'keyboard' : 'auto'; }
+  var SR_ERRORS = {
+    'not-allowed': 'Mikrofon nicht erlaubt. iPhone: Einstellungen › Apps › Safari › Mikrofon › Erlauben. Solange geht das Tastatur-Mikrofon.',
+    'service-not-allowed': 'Die Diktierfunktion ist aus. iPhone: Einstellungen › Allgemein › Tastatur › Diktierfunktion aktivieren. Solange geht das Tastatur-Mikrofon nicht, Tippen schon.',
+    'audio-capture': 'Das Mikrofon ist belegt (Anruf, Sprachmemo oder andere App). Schliesse die andere App und tippe nochmals.',
+    'network': 'Die Spracherkennung braucht Internet. Prüfe WLAN oder Mobilnetz.',
+    'language-not-supported': 'Deutsch (Schweiz) wird hier nicht erkannt. Nutze das Tastatur-Mikrofon.'
+  };
+
+  function prefMic() { return state.settings.mic || (isStandalone ? 'keyboard' : 'auto'); }
+  function micMode() {
+    if (!SR || micHung) return 'keyboard';
+    return prefMic();
+  }
+  function diagMode() {
+    D.set('mode', micMode() === 'keyboard'
+      ? 'Tastatur' + (!SR ? ' (keine Spracherkennung)' : micHung ? ' (Safari hing)' : isStandalone && !state.settings.mic ? ' (Home-Bildschirm-App)' : ' (Einstellung)')
+      : 'MeP-Diktat');
+  }
   function micUi(on) {
     $('mic').classList.toggle('live', on);
     $('mic').setAttribute('aria-label', on ? 'Diktat beenden' : 'Diktieren');
@@ -236,38 +261,50 @@
     // Muss direkt im Tipp passieren, sonst öffnet iOS die Tastatur nicht
     input.focus();
     $('hint').textContent = 'Tippe auf die Mikrofon-Taste der Tastatur und sprich deine Liste';
+    D.log('Tastatur-Diktat geöffnet');
   }
   function clearTimers() { clearTimeout(startTimer); clearTimeout(watchdog); clearTimeout(hardStop); }
-  function detach(r) { if (r) { r.onresult = r.onerror = r.onend = r.onstart = r.onaudiostart = null; } }
+  function detach(r) {
+    if (!r) return;
+    ['onresult', 'onerror', 'onend', 'onstart', 'onaudiostart', 'onaudioend', 'onsoundstart', 'onsoundend',
+      'onspeechstart', 'onspeechend', 'onnomatch'].forEach(function (k) { r[k] = null; });
+  }
   function endSession(doSubmit) {
     clearTimers();
     var r = rec; rec = null;
     detach(r);
-    if (r && !recEnded) { try { r.abort(); } catch (e) { /* */ } }
+    if (r && !recEnded) { try { r.abort(); D.log('abort()'); } catch (e) { /* */ } }
     recEnded = true;
     var was = listening;
     listening = false; micUi(false);
+    D.set('srState', micHung ? 'hängt (Tastatur aktiv)' : 'bereit'); diagMode();
     if (was && doSubmit !== false && input.value.trim()) submit();
   }
   function finishMic() {
     if (!rec || recEnded) { endSession(true); return; }
-    try { rec.stop(); } catch (e) { endSession(true); return; }
+    D.set('srState', 'stoppt');
+    try { rec.stop(); D.log('stop()'); } catch (e) { D.log('stop() Fehler', e.name); endSession(true); return; }
     clearTimeout(hardStop);
-    hardStop = setTimeout(function () { if (listening) endSession(true); }, STOP_GRACE);
+    hardStop = setTimeout(function () { if (listening) { D.log('kein end-Ereignis, selbst beendet'); endSession(true); } }, STOP_GRACE);
   }
   function armWatchdog() {
     clearTimeout(watchdog);
-    watchdog = setTimeout(finishMic, SILENCE_TIMEOUT);
+    watchdog = setTimeout(function () { D.log('25 s Stille, beende'); finishMic(); }, SILENCE_TIMEOUT);
   }
   function markHung(msg) {
     micHung = true;
+    D.set('err', 'Spracherkennung hängt: kein start-Ereignis');
     endSession(true);
     toast(msg || 'Das iPhone-Mikrofon hängt (bekannter Safari-Fehler). Tippe nochmals aufs Mikrofon: dann öffnet sich die Tastatur mit Diktier-Taste.');
   }
   function startMic() {
     if (rec) endSession(false);
+    D.releaseMic();              // Diagnose-Test gibt das Mikrofon frei
     var r;
-    try { r = new SR(); } catch (e) { markHung('Diktat hier nicht verfügbar. Tippe nochmals: dann öffnet sich die Tastatur.'); return; }
+    try { r = new SR(); } catch (e) {
+      D.set('err', 'new SpeechRecognition: ' + e.name + ': ' + e.message);
+      markHung('Diktat hier nicht verfügbar. Tippe nochmals: dann öffnet sich die Tastatur.'); return;
+    }
     rec = r; recEnded = false;
     r.lang = 'de-CH';
     r.interimResults = true;
@@ -275,51 +312,80 @@
     r.maxAlternatives = 1;
     micBase = input.value.trim() ? input.value.trim() + '\n' : '';
     transcript.reset();
-    var alive = function () { clearTimeout(startTimer); };
-    r.onstart = alive;
-    r.onaudiostart = alive;
+    var alive = function (name) {
+      return function () {
+        clearTimeout(startTimer);
+        if (r === rec) D.set('srState', 'hört zu');
+        D.log(name);
+      };
+    };
+    r.onstart = alive('start');
+    r.onaudiostart = alive('audiostart');
+    ['onsoundstart', 'onspeechstart', 'onspeechend', 'onsoundend', 'onaudioend', 'onnomatch'].forEach(function (k) {
+      r[k] = function () { D.log(k.slice(2)); };
+    });
     r.onresult = function (ev) {
       if (r !== rec) return;
-      alive();
+      clearTimeout(startTimer);
       if (!state.settings.micOk) { state.settings.micOk = true; save(); }
       input.value = micBase + transcript.push(ev);
+      D.log('result', (ev.results ? ev.results.length : 0) + ' Teile · ' + input.value.length + ' Zeichen');
       autosize(); updatePreview(); armWatchdog();
     };
     r.onerror = function (ev) {
       if (r !== rec) return;
       var e = ev && ev.error;
+      D.log('error', e + (ev && ev.message ? ': ' + ev.message : ''));
+      D.set('err', 'SpeechRecognition ' + e + (ev && ev.message ? ': ' + ev.message : ''));
       if (e === 'aborted') return;
-      if (e === 'not-allowed' || e === 'service-not-allowed') {
-        micHung = true; recEnded = true; endSession(false); keyboardDictation();
-        toast('Mikrofon nicht erlaubt. iPhone: Einstellungen › Apps › Safari › Mikrofon › Erlauben. Solange geht das Tastatur-Mikrofon.');
+      recEnded = true;
+      if (e === 'not-allowed' || e === 'service-not-allowed' || e === 'language-not-supported') {
+        micHung = true; endSession(false); keyboardDictation();
+        toast(SR_ERRORS[e]);
+        if (e === 'not-allowed') D.set('perm', 'denied (Spracherkennung)');
       } else if (e === 'no-speech') {
-        recEnded = true; endSession(true); toast('Nichts gehört. Nochmals aufs Mikrofon tippen.');
+        endSession(true); toast('Nichts gehört. Nochmals aufs Mikrofon tippen.');
+      } else if (SR_ERRORS[e]) {
+        endSession(true); toast(SR_ERRORS[e]);
       } else {
-        recEnded = true; markHung();
+        markHung();
       }
     };
-    r.onend = function () { if (r !== rec) return; recEnded = true; endSession(true); };
+    r.onend = function () { D.log('end'); if (r !== rec) return; recEnded = true; endSession(true); };
     try {
       r.start();
+      D.log('start() aufgerufen', 'Objekt #' + (++startCount));
     } catch (e) {
       recEnded = true; rec = null;
+      D.log('start() Fehler', e.name + ': ' + e.message);
+      D.set('err', 'start(): ' + e.name + ': ' + e.message);
       markHung('Mikrofon startet nicht. Tippe nochmals: dann öffnet sich die Tastatur.');
       return;
     }
     listening = true; micUi(true); updatePreview(); armWatchdog();
-    // Kein Lebenszeichen nach dem Start: Safari hängt
-    // Erste Nutzung: iPhone fragt nach der Erlaubnis, dafür mehr Zeit lassen
-    startTimer = setTimeout(function () { if (listening && r === rec) markHung(); }, state.settings.micOk ? START_TIMEOUT : 15000);
+    D.set('srState', 'startet');
+    // Kein Lebenszeichen nach dem Start: Safari hängt.
+    // Erste Nutzung: iPhone fragt nach der Erlaubnis, dafür mehr Zeit lassen.
+    var limit = state.settings.micOk ? START_TIMEOUT : 15000;
+    startTimer = setTimeout(function () {
+      if (listening && r === rec) { D.log('kein start/audiostart nach ' + limit / 1000 + ' s'); markHung(); }
+    }, limit);
     if (navigator.vibrate) { try { navigator.vibrate(15); } catch (e) { /* */ } }
   }
+  var startCount = 0;
   $('mic').addEventListener('click', function () {
     if (listening) { finishMic(); return; }
     if (micMode() === 'keyboard') { keyboardDictation(); return; }
     startMic();
   });
   input.addEventListener('blur', function () { if (!listening) $('hint').textContent = HINT_DEFAULT; });
-  document.addEventListener('visibilitychange', function () { if (document.hidden && listening) endSession(true); });
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden && listening) { D.log('Hintergrund während Aufnahme'); endSession(true); }
+  });
   window.addEventListener('pagehide', function () { if (listening) endSession(false); });
+  // Brücke für das Diagnose-Panel
+  window.MepMic = { busy: function () { return listening; }, stop: function () { endSession(false); } };
+  diagMode();
 
   // ---------- Liste: Klicks ----------
   $('groups').addEventListener('click', function (e) {
@@ -413,7 +479,7 @@
   function paintMenu() {
     $('bigToggle').setAttribute('aria-pressed', String(!!state.settings.big));
     Array.prototype.forEach.call($('themeSeg').children, function (b) { b.setAttribute('aria-pressed', String(b.dataset.v === state.settings.theme)); });
-    Array.prototype.forEach.call($('micSeg').children, function (b) { b.setAttribute('aria-pressed', String(b.dataset.v === (state.settings.mic || 'auto'))); });
+    Array.prototype.forEach.call($('micSeg').children, function (b) { b.setAttribute('aria-pressed', String(b.dataset.v === prefMic())); });
     $('mClearAll').classList.remove('armed'); $('mClearAllLbl').textContent = 'Neue Liste starten';
   }
   var wakeLock = null;
@@ -435,7 +501,7 @@
   });
   $('micSeg').addEventListener('click', function (e) {
     var b = e.target.closest('button'); if (!b) return;
-    state.settings.mic = b.dataset.v; micHung = false; save(); paintMenu();
+    state.settings.mic = b.dataset.v; micHung = false; save(); paintMenu(); diagMode();
   });
   $('mClearDone').addEventListener('click', function () {
     var snapshot = clone(state.tasks);
